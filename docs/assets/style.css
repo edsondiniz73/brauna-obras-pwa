@@ -1,0 +1,29 @@
+:root{--orange:#E95420;--dark:#333333;--bg:#f4f4f6;--card:#ffffff;--muted:#707070;}
+*{box-sizing:border-box;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;}
+body{margin:0;background:var(--bg);color:var(--dark);}
+.app{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:240px 1fr;min-height:100vh;}
+aside{background:linear-gradient(180deg, rgba(233,84,32,0.95), rgba(233,84,32,0.9));color:#fff;padding:18px;}
+aside h2{margin:0 0 8px 0;font-size:18px;letter-spacing:1px}
+nav{padding-top:12px;display:flex;flex-direction:column;gap:8px}
+nav button{background:transparent;border:none;color:white;text-align:left;padding:10px;border-radius:6px;cursor:pointer;font-weight:600}
+nav button.active{background:rgba(0,0,0,0.12)}
+header{background:#fff;padding:14px 18px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+main{padding:18px}
+.topinfo{display:flex;gap:12px;align-items:center}
+.card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.04);margin-bottom:14px}
+.btn{background:var(--orange);color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--dark);border:1px solid #eee}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border-bottom:1px solid #f0f0f0;text-align:left}
+.photo-thumb{height:80px;border-radius:6px;object-fit:cover;border:1px solid #e9e9e9}
+footer{padding:12px;text-align:center;color:var(--muted);font-size:13px}
+@media(max-width:800px){.app{grid-template-columns:1fr}aside{display:none}}
+.small{font-size:13px;color:var(--muted)}
+.status-pill{padding:6px 8px;border-radius:999px;font-weight:700;font-size:12px}
+.status-pendente{background:#fff3e6;color:#b35a00;border:1px solid #ffd8b8}
+.status-concluido{background:#e9f8ee;color:#206738;border:1px solid #c7eed0}
+.status-andamento{background:#eef6ff;color:#0b5fa5;border:1px solid #cfe6ff}
+.modal{position:fixed;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);z-index:50}
+.modal .box{width:520px;background:#fff;padding:16px;border-radius:8px}
+input[type=file]{display:none}

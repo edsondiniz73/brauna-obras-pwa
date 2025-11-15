@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Braúna Obras</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E95420">
+  
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <h2>Braúna Obras</h2>
+      <div class="small">Prédio de Refeitório – ETEX / Gypsum Petrolina-PE</div>
+      <div style="height:12px"></div>
+      <nav>
+        <button id="menu-dashboard" class="active">Dashboard</button>
+        <button id="menu-checklist">Checklist</button>
+        <button id="menu-photos">Fotos</button>
+        <button id="menu-reports">Relatórios</button>
+        <button id="menu-config">Configurações</button>
+      </nav>
+      <div style="margin-top:18px;font-size:13px">Responsável: <strong>Eng. Edson Diniz</strong></div>
+    </aside>
+
+    <div style="display:flex;flex-direction:column">
+      <header>
+        <div class="topinfo">
+          <div style="display:flex;align-items:center;gap:12px">
+            <img src="icon-64.png" alt="B" style="width:44px;height:44px;border-radius:8px">
+            <div>
+              <div style="font-weight:800">Braúna Obras</div>
+              <div class="small">Início: 07/10/2025</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <button class="btn" id="installBtn">Instalar App</button>
+        </div>
+      </header>
+
+      <main id="main">
+        <section id="view-dashboard" class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h3 style="margin:0">Dashboard</h3>
+              <div class="small">Visão rápida do status da obra</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn ghost" id="btn-sync">Sincronizar (Drive)</button>
+              <button class="btn" id="btn-report">Gerar PDF</button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px" class="grid">
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div><strong>Checklist</strong><div class="small">Itens: <span id="totalItems">0</span></div></div>
+                <div><span id="doneCount">0</span> concluídos</div>
+              </div>
+            </div>
+            <div class="card">
+              <strong>Fotos</strong>
+              <div class="small" id="photoCount">0 fotos</div>
+            </div>
+            <div class="card">
+              <strong>Última Sincronização</strong>
+              <div class="small" id="lastSync">—</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-checklist" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3>Checklist Geral</h3>
+            <div style="display:flex;gap:8px">
+              <button class="btn ghost" id="addItemBtn">Adicionar item</button>
+              <button class="btn" id="exportPdfBtn">Gerar Relatório</button>
+            </div>
+          </div>
+          <div class="card">
+            <table id="checklistTable"><thead><tr><th>Item</th><th>Status</th><th>Obs / Fotos</th><th>Ações</th></tr></thead><tbody></tbody></table>
+          </div>
+        </section>
+
+        <section id="view-photos" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3>Fotos da Obra</h3>
+            <div style="display:flex;gap:8px">
+              <label class="btn" for="photoInput">Adicionar Foto</label>
+              <input id="photoInput" type="file" accept="image/*" capture="environment" multiple>
+            </div>
+          </div>
+          <div class="card" id="photoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,160px);gap:12px"></div>
+        </section>
+
+        <section id="view-reports" style="display:none">
+          <h3>Relatórios</h3>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <strong>Relatório de progresso</strong>
+                <div class="small">Gera PDF com checklist e fotos anexadas</div>
+              </div>
+              <div><button class="btn" id="genReportBtn">Gerar PDF Completo</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-config" style="display:none">
+          <h3>Configurações</h3>
+          <div class="card">
+            <div class="small">Sincronização: Google Drive (recomendado)</div>
+          </div>
+          <div class="card">
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button class="btn ghost" id="clearLocalBtn">Limpar dados locais</button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <footer>Braúna Obras — Construtora Braúna • Protótipo PWA</footer>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="assets/main.js"></script>
+</body>
+</html>
