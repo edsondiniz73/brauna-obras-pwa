@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Braúna Obras</title>
   
-  <link rel="manifest" href="./manifest.json"> <meta name="theme-color" content="#E95420">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E95420">
   
   <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -37,7 +38,7 @@
           </div>
         </div>
         <div>
-          <button class="btn" id="installBtn">Instalar App</button>
+          <button class="btn" id="installBtn" style="display:none">Instalar App</button>
         </div>
       </header>
 
@@ -128,48 +129,8 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
   <script src="assets/main.js"></script>
-  
-  <script>
-    if ('serviceWorker' in navigator) {
-      // O caminho './service-worker.js' garante que ele encontre o arquivo
-      // na pasta atual, resolvendo o problema de subdiretório do GitHub Pages.
-      navigator.serviceWorker.register('./service-worker.js')
-        .then(registration => {
-          console.log('Service Worker registrado com sucesso. Escopo: ', registration.scope);
-        })
-        .catch(error => {
-          console.error('Falha no registro do Service Worker:', error);
-        });
-    }
-
-    // Código para mostrar o prompt de instalação (opcional, mas recomendado para PWA)
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      // Previne que o mini-infobar apareça automaticamente
-      e.preventDefault();
-      // Armazena o evento para ser disparado depois
-      deferredPrompt = e;
-      // Mostra o botão de instalação
-      const installBtn = document.getElementById('installBtn');
-      if (installBtn) {
-        installBtn.style.display = 'block'; 
-      }
-      
-      installBtn.addEventListener('click', () => {
-        // Esconde o botão e dispara o prompt
-        installBtn.style.display = 'none';
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === 'accepted') {
-            console.log('Usuário aceitou a instalação do PWA');
-          } else {
-            console.log('Usuário recusou a instalação do PWA');
-          }
-          deferredPrompt = null;
-        });
-      });
-    });
-  </script>
 </body>
 </html>
