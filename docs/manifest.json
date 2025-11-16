@@ -2,7 +2,7 @@
   "name": "Braúna Obras",
   "short_name": "Braúna",
   "description": "Checklist e fotos para obras — Construtora Braúna",
-  "start_url": ".",
+  "start_url": "./index.html", // CORRIGIDO
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#E95420",
