@@ -13,7 +13,7 @@ function gapiLoaded() {
   gapi.load('client', initializeGapiClient);
 }
 
-// 🛑 CORREÇÃO DE CARREGAMENTO (IMPEDE O TRAVAMENTO)
+// 🛑 CORREÇÃO CRÍTICA AQUI: Carregamento explícito da API Drive para busca e evitar travamento
 async function initializeGapiClient() {
   await gapi.client.init({
     apiKey: API_KEY,
@@ -21,8 +21,9 @@ async function initializeGapiClient() {
   });
   
   try {
-    // Carregamento explícito do módulo Drive para permitir a busca (list)
+    // Carregamento explícito do módulo Drive para permitir a busca (list) e o PATCH
     await gapi.client.load('drive', 'v3'); 
+    console.log("Google Drive API v3 carregada com sucesso.");
   } catch (error) {
     console.error("Falha ao carregar Google Drive API:", error);
   }
@@ -45,6 +46,7 @@ function gisLoaded() {
   });
 }
 
+// Função auxiliar para converter ArrayBuffer para Base64 (foto no JSON)
 function arrayBufferToBase64(buffer) {
     let binary = '';
     const bytes = new Uint8Array(buffer);
@@ -55,8 +57,11 @@ function arrayBufferToBase64(buffer) {
     return window.btoa(binary);
 }
 
+
+// FUNÇÃO PARA BUSCAR O ARQUIVO EXISTENTE (Necessário para sobrescrever)
 async function searchExistingFile() {
     if (!gapi.client.drive) {
+        console.warn('Google Drive API não carregada. Tentando o upload/criação padrão.');
         return null;
     }
     try {
@@ -69,7 +74,7 @@ async function searchExistingFile() {
         const files = response.result.files;
         return files.length > 0 ? files[0].id : null;
     } catch (e) {
-        console.error('Erro ao buscar arquivo existente:', e);
+        console.error('Erro ao buscar arquivo existente (API call fail):', e);
         return null;
     }
 }
@@ -88,6 +93,7 @@ function handleAuthClick() {
   }
 }
 
+// FUNÇÃO PRINCIPAL DE BACKUP/UPLOAD (Agora usa POST ou PATCH)
 async function uploadToDrive() {
   if (!accessToken) {
     alert("Token de acesso não disponível. Tente sincronizar novamente.");
@@ -102,7 +108,7 @@ async function uploadToDrive() {
       lastSync: new Date().toISOString()
   };
 
-  // Conversão de ArrayBuffer para Base64
+  // Conversão de ArrayBuffer para Base64 (Necessário para serializar)
   if (localData.photos && localData.photos.length > 0) {
       localData.photos = localData.photos.map(p => {
           if (p.blob instanceof ArrayBuffer) { 
@@ -121,16 +127,18 @@ async function uploadToDrive() {
   const fileMetadata = {
     'name': 'brauna_obras_backup.json',
     'mimeType': 'application/json',
-    'parents': ['root'] 
+    'parents': ['root'] // Salvando na pasta raiz (Meu Drive)
   };
   
+  // LÓGICA DE SUBSTITUIÇÃO (POST/PATCH) 
   const existingFileId = await searchExistingFile(); 
   
-  let method = 'POST'; 
+  let method = 'POST'; // Padrão: Criar novo arquivo
   let path = '/upload/drive/v3/files';
   let params = { 'uploadType': 'multipart' };
   
   if (existingFileId) {
+      // Se o arquivo existe, muda para PATCH (Atualizar)
       method = 'PATCH'; 
       path = `/upload/drive/v3/files/${existingFileId}`;
       delete fileMetadata.parents; // Não precisa de parents no PATCH
@@ -265,7 +273,7 @@ function getAll(store){ 
     }); 
 }
 
-// 🆕 FUNÇÕES AUXILIARES PARA DELETAR E OBTER POR ID
+// 🆕 FUNÇÕES AUXILIARES PARA DELETAR E OBTER POR ID (Necessário para a exclusão de fotos)
 function deleteById(store, key){
     return new Promise((res,rej)=>{
         const tx=db.transaction(store,'readwrite');
@@ -371,7 +379,7 @@ window.attachPhoto = async function(itemId){ 
     input.click(); 
 }
 
-// 🆕 FUNÇÃO PARA DELETAR FOTO
+// 🆕 FUNÇÃO PARA DELETAR FOTO (A peça que estava faltando!)
 window.deletePhoto = async function(photoId, itemId) {
     if (!confirm('Tem certeza que deseja apagar esta foto?')) return;
 
@@ -380,7 +388,7 @@ window.deletePhoto = async function(photoId, itemId) {
         await deleteById('photos', photoId);
 
         // 2. Remove a referência do item do checklist (se houver)
-        if (itemId && itemId !== 'null') { // itemId pode vir como string 'null' do HTML
+        if (itemId && itemId !== 'null') { 
             const item = await getById('checklist', itemId);
             if (item && item.photos) {
                 // Filtra o array removendo o ID da foto
@@ -409,7 +417,7 @@ async function renderPhotoGrid(){ 
             const blob = new Blob([p.blob], {type: p.mime}); 
             const url = URL.createObjectURL(blob); 
             const div=document.createElement('div'); 
-            // 🆕 Inclui o botão de exclusão
+            // 🆕 Este é o HTML que insere o botão "Apagar"
             div.innerHTML = `
                 <img class='photo-thumb' src='${url}' alt='${p.name}'>
                 <div class='photo-info'>
@@ -435,7 +443,6 @@ document.getElementById('photoInput').addEventListener('change', async (e)=>{ 
     for(const f of files){ 
         const id='photo_'+Date.now()+'_'+Math.floor(Math.random()*1000); 
         const buf = await f.arrayBuffer(); 
-        // itemId é null para fotos avulsas (não anexadas a um item específico)
         await put('photos',{id, blob:buf, name:f.name, mime:f.type, date:Date.now(), itemId:null}); 
     } 
     await renderPhotoGrid(); 
