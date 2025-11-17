@@ -39,6 +39,18 @@ function gisLoaded() {
   });
 }
 
+// Função auxiliar para converter ArrayBuffer para Base64 (NECESSÁRIO PARA SALVAR IMAGEM NO JSON)
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+}
+
+
 // Função para iniciar o fluxo de autorização
 function handleAuthClick() {
   if (!tokenClient || !gapi.client) {
@@ -55,7 +67,7 @@ function handleAuthClick() {
   }
 }
 
-// FUNÇÃO PRINCIPAL DE BACKUP/UPLOAD - VERSÃO ROBUSTA (Corrigindo o 403 de formato)
+// FUNÇÃO PRINCIPAL DE BACKUP/UPLOAD - VERSÃO ROBUSTA
 async function uploadToDrive() {
   if (!accessToken) {
     alert("Token de acesso não disponível. Tente sincronizar novamente.");
@@ -69,13 +81,33 @@ async function uploadToDrive() {
       photos: await getAll('photos'),
       lastSync: new Date().toISOString()
   };
+
+  // ⚠️ CORREÇÃO CRÍTICA AQUI: Converter ArrayBuffer (dados binários da foto) para Base64 (string)
+  if (localData.photos && localData.photos.length > 0) {
+      localData.photos = localData.photos.map(p => {
+          if (p.blob instanceof ArrayBuffer) {
+              const base64Data = arrayBufferToBase64(p.blob);
+              // Retorna um novo objeto com a string Base64 no lugar do ArrayBuffer
+              return { 
+                  id: p.id, 
+                  name: p.name, 
+                  mime: p.mime, 
+                  date: p.date, 
+                  itemId: p.itemId, 
+                  base64Data: base64Data // Novo campo com a string da imagem
+              };
+          }
+          return p; // Retorna o objeto original se já não for ArrayBuffer
+      });
+  }
+
   const content = JSON.stringify(localData);
 
   // 2. Metadados do arquivo
   const fileMetadata = {
     'name': 'brauna_obras_backup.json',
     'mimeType': 'application/json',
-    'parents': ['root'] // <-- CORRIGIDO: Usa a pasta raiz para resolver erro 403 de escopo
+    'parents': ['root'] // CORRIGIDO
   };
   
   // 3. Monta o corpo da requisição Multi-part de forma manual
