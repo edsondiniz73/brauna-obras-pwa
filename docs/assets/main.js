@@ -4,28 +4,25 @@
 const CLIENT_ID = '748610201197-f31mfm8urml5b3ttsfcjuno3rhsrojfl.apps.googleusercontent.com'; // SEU ID DE CLIENTE
 const API_KEY = 'AIzaSyCksEZCtHi5Mm5ud68HpCYvrP1vu3SOPes'; // SUA CHAVE DE API REAL
 const SCOPES = 'https://www.googleapis.com/auth/drive.file'; 
-// A documentação de descoberta ainda é necessária, mas o carregamento será feito de forma mais explícita.
 const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"]; 
 
 let tokenClient;
 let accessToken = null; 
 
-// Funções chamadas globalmente quando os scripts do Google carregam (dependem do index.html)
 function gapiLoaded() {
   gapi.load('client', initializeGapiClient);
 }
 
-// 🛑 CORREÇÃO CRÍTICA AQUI: Carregamento explícito da API Drive
+// 🛑 CORREÇÃO DE CARREGAMENTO (IMPEDE O TRAVAMENTO)
 async function initializeGapiClient() {
   await gapi.client.init({
     apiKey: API_KEY,
     discoveryDocs: DISCOVERY_DOCS,
   });
   
-  // 🆕 Adiciona o carregamento explícito do módulo Drive para permitir gapi.client.drive.*
   try {
-    await gapi.client.load('drive', 'v3');
-    console.log("Google Drive API v3 carregada com sucesso.");
+    // Carregamento explícito do módulo Drive para permitir a busca (list)
+    await gapi.client.load('drive', 'v3'); 
   } catch (error) {
     console.error("Falha ao carregar Google Drive API:", error);
   }
@@ -42,13 +39,12 @@ function gisLoaded() {
         } else {
             accessToken = tokenResponse.access_token; 
             document.getElementById('btn-sync').innerText = 'Sincronizar (Drive)';
-            uploadToDrive(); // Tenta o upload imediatamente
+            uploadToDrive();
         }
     },
   });
 }
 
-// Função auxiliar para converter ArrayBuffer para Base64 (foto no JSON)
 function arrayBufferToBase64(buffer) {
     let binary = '';
     const bytes = new Uint8Array(buffer);
@@ -59,50 +55,39 @@ function arrayBufferToBase64(buffer) {
     return window.btoa(binary);
 }
 
-
-// FUNÇÃO PARA BUSCAR O ARQUIVO EXISTENTE
 async function searchExistingFile() {
     if (!gapi.client.drive) {
-        // Verifica se a API do Drive está carregada antes de tentar usar
-        console.warn('Google Drive API não carregada. Tentando o upload/criação padrão.');
         return null;
     }
     try {
-        // Busca o arquivo com o nome 'brauna_obras_backup.json' na pasta root (Meu Drive)
         const response = await gapi.client.drive.files.list({
             'q': "name='brauna_obras_backup.json' and trashed=false",
             'spaces': 'drive',
-            'fields': 'files(id)', // Pede apenas o ID do arquivo
+            'fields': 'files(id)', 
             'pageSize': 1
         });
-
         const files = response.result.files;
-        // Retorna o ID do primeiro arquivo encontrado ou null
         return files.length > 0 ? files[0].id : null;
     } catch (e) {
-        console.error('Erro ao buscar arquivo existente (API call fail):', e);
+        console.error('Erro ao buscar arquivo existente:', e);
         return null;
     }
 }
 
 
-// Função para iniciar o fluxo de autorização
 function handleAuthClick() {
   if (!tokenClient || !gapi.client) {
     alert("Aguarde o carregamento das bibliotecas do Google (gapi/gis).");
     return;
   }
   
-  // Se já tiver um token (usuário já logou), tenta o upload diretamente
   if (accessToken) {
      uploadToDrive(); 
   } else {
-     // Se não tiver token, pede autorização
      tokenClient.requestAccessToken();
   }
 }
 
-// FUNÇÃO PRINCIPAL DE BACKUP/UPLOAD - VERSÃO CORRIGIDA COM ATUALIZAÇÃO (PATCH)
 async function uploadToDrive() {
   if (!accessToken) {
     alert("Token de acesso não disponível. Tente sincronizar novamente.");
@@ -110,7 +95,7 @@ async function uploadToDrive() {
     return;
   }
   
-  // 1. Prepara os dados locais (incluindo a conversão Base64 para fotos)
+  // Prepara os dados (incluindo conversão Base64)
   const localData = {
       checklist: await getAll('checklist'), 
       photos: await getAll('photos'),
@@ -123,11 +108,7 @@ async function uploadToDrive() {
           if (p.blob instanceof ArrayBuffer) { 
               const base64Data = arrayBufferToBase64(p.blob);
               return { 
-                  id: p.id, 
-                  name: p.name, 
-                  mime: p.mime, 
-                  date: p.date, 
-                  itemId: p.itemId, 
+                  id: p.id, name: p.name, mime: p.mime, date: p.date, itemId: p.itemId, 
                   base64Data: base64Data 
               };
           }
@@ -137,30 +118,25 @@ async function uploadToDrive() {
 
   const content = JSON.stringify(localData);
 
-  // 2. Metadados do arquivo
   const fileMetadata = {
     'name': 'brauna_obras_backup.json',
     'mimeType': 'application/json',
-    'parents': ['root'] // Pasta raiz
+    'parents': ['root'] 
   };
   
-  // 3. LÓGICA DE SUBSTITUIÇÃO (POST/PATCH) 
   const existingFileId = await searchExistingFile(); 
   
-  let method = 'POST'; // Padrão: Criar novo arquivo
+  let method = 'POST'; 
   let path = '/upload/drive/v3/files';
   let params = { 'uploadType': 'multipart' };
   
   if (existingFileId) {
-      // Se o arquivo existe, muda para PATCH (Atualizar)
       method = 'PATCH'; 
       path = `/upload/drive/v3/files/${existingFileId}`;
-      // Remove 'parents' do metadata no PATCH, já que ele já está na pasta correta
-      delete fileMetadata.parents;
+      delete fileMetadata.parents; // Não precisa de parents no PATCH
   }
 
 
-  // 4. Monta o corpo da requisição Multi-part
   const boundary = 'brauna_boundary_data'; 
   const delimiter = "\r\n--" + boundary + "\r\n";
   const close_delimiter = "\r\n--" + boundary + "--";
@@ -168,15 +144,13 @@ async function uploadToDrive() {
   let multipartRequestBody =
       delimiter +
       'Content-Type: application/json\r\n\r\n' +
-      // Inclui metadados (apenas o nome e mimeType para PATCH, ou nome/mimeType/parents para POST)
       JSON.stringify(fileMetadata) + 
       delimiter +
-      'Content-Type: application/json\r\n\r\n' + // Tipo de conteúdo dos dados (JSON)
+      'Content-Type: application/json\r\n\r\n' + 
       content + 
       close_delimiter;
 
   try {
-    // 5. Executa a requisição (POST ou PATCH)
     const request = gapi.client.request({
       path: path,
       method: method,
@@ -196,7 +170,6 @@ async function uploadToDrive() {
       return;
     } 
     
-    // Tratamento de erro
     if (response.status === 401) {
          accessToken = null; 
          alert('Autorização expirada. Tentando re-autorizar.');
@@ -216,10 +189,9 @@ async function uploadToDrive() {
 }
 
 
-// Constantes de Configuração (o restante do código não sofreu alteração na lógica, apenas a inclusão do carregamento da API)
+// Constantes e Mapeamento de Views
 const APP_NAME = "Braúna Obras";
 
-// Mapeamento de Views
 const views = {
     dashboard: document.getElementById('view-dashboard'),
     checklist: document.getElementById('view-checklist'),
@@ -228,7 +200,6 @@ const views = {
     config: document.getElementById('view-config')
 };
 
-// Função para Mudar a View
 function show(view){ 
     for(const k in views){ 
         views[k].style.display='none'; 
@@ -238,17 +209,13 @@ function show(view){ 
     document.getElementById('menu-'+view).classList.add('active'); 
 }
 
-
-// NOVO: CONEXÃO DOS BOTÕES DO MENU (Função que corrige os menus travados)
 function attachMenuListeners() {
     ['dashboard', 'checklist', 'photos', 'reports', 'config'].forEach(view => {
         const btn = document.getElementById(`menu-${view}`);
-        // Se o botão existir no HTML, anexa o listener
         if (btn) { 
             btn.addEventListener('click', () => show(view));
         }
     });
-    // Conecta o botão de Gerar PDF da dashboard que leva para a view de reports
     const reportBtn = document.getElementById('btn-report');
     if (reportBtn) {
         reportBtn.addEventListener('click', () => show('reports'));
@@ -298,6 +265,28 @@ function getAll(store){ 
     }); 
 }
 
+// 🆕 FUNÇÕES AUXILIARES PARA DELETAR E OBTER POR ID
+function deleteById(store, key){
+    return new Promise((res,rej)=>{
+        const tx=db.transaction(store,'readwrite');
+        const st=tx.objectStore(store);
+        const rq=st.delete(key);
+        rq.onsuccess=()=>res();
+        rq.onerror=e=>rej(e);
+    });
+}
+
+function getById(store, key){
+    return new Promise((res,rej)=>{
+        const tx=db.transaction(store,'readonly');
+        const st=tx.objectStore(store);
+        const rq=st.get(key);
+        rq.onsuccess=()=>res(rq.result);
+        rq.onerror=e=>rej(e);
+    });
+}
+
+
 function clearStore(store){ 
     return new Promise((res,rej)=>{ 
         const tx=db.transaction(store,'readwrite'); 
@@ -310,7 +299,6 @@ function clearStore(store){ 
 
 const defaultChecklist = ['Projeto executivo completo aprovado','Memorial descritivo atualizado','ARTs/RRTs emitidas e registradas','Cronograma físico-financeiro definido','Licenças liberadas (alvará, ambiental)','Planilha orçamentária revisada','Diário de obra atualizado','Equipe registrada e com ASOs válidos','Checklists de cada etapa executiva','Armazenamento de materiais adequado','Medições de serviço aprovadas','Limpeza final e checklist de entrega'];
 
-// Inicialização e Renderização da UI
 async function init(){ 
     await openDB(); 
     const items = await getAll('checklist'); 
@@ -383,17 +371,52 @@ window.attachPhoto = async function(itemId){ 
     input.click(); 
 }
 
+// 🆕 FUNÇÃO PARA DELETAR FOTO
+window.deletePhoto = async function(photoId, itemId) {
+    if (!confirm('Tem certeza que deseja apagar esta foto?')) return;
+
+    try {
+        // 1. Deleta do store 'photos'
+        await deleteById('photos', photoId);
+
+        // 2. Remove a referência do item do checklist (se houver)
+        if (itemId && itemId !== 'null') { // itemId pode vir como string 'null' do HTML
+            const item = await getById('checklist', itemId);
+            if (item && item.photos) {
+                // Filtra o array removendo o ID da foto
+                item.photos = item.photos.filter(id => id !== photoId);
+                await put('checklist', item);
+            }
+        }
+
+        alert('Foto apagada com sucesso!');
+        await refreshUI();
+        await renderPhotoGrid();
+
+    } catch (e) {
+        console.error("Erro ao apagar foto:", e);
+        alert("Erro ao apagar foto. Veja o console para detalhes.");
+    }
+};
+
+
 async function renderPhotoGrid(){ 
     const photos = await getAll('photos'); 
     const grid=document.getElementById('photoGrid'); 
     grid.innerHTML=''; 
     for(const p of photos){ 
-        // Apenas renderiza fotos que estão no formato binário local (ArrayBuffer)
         if (p.blob instanceof ArrayBuffer) {
             const blob = new Blob([p.blob], {type: p.mime}); 
             const url = URL.createObjectURL(blob); 
             const div=document.createElement('div'); 
-            div.innerHTML = `<img class='photo-thumb' src='${url}' alt='${p.name}'><div class='small'>${p.name}</div>`; 
+            // 🆕 Inclui o botão de exclusão
+            div.innerHTML = `
+                <img class='photo-thumb' src='${url}' alt='${p.name}'>
+                <div class='photo-info'>
+                    <div class='small'>${p.name}</div>
+                    <button class='btn-delete' onclick="deletePhoto('${p.id}', '${p.itemId}')">Apagar</button>
+                </div>
+            `; 
             grid.appendChild(div); 
         } 
     } 
@@ -412,6 +435,7 @@ document.getElementById('photoInput').addEventListener('change', async (e)=>{ 
     for(const f of files){ 
         const id='photo_'+Date.now()+'_'+Math.floor(Math.random()*1000); 
         const buf = await f.arrayBuffer(); 
+        // itemId é null para fotos avulsas (não anexadas a um item específico)
         await put('photos',{id, blob:buf, name:f.name, mime:f.type, date:Date.now(), itemId:null}); 
     } 
     await renderPhotoGrid(); 
@@ -491,7 +515,7 @@ if('serviceWorker' in navigator){ 
 const syncButton = document.getElementById('btn-sync');
 if (syncButton) {
     syncButton.addEventListener('click', () => {
-        handleAuthClick(); // Chama a função que gerencia a autorização/upload
+        handleAuthClick(); 
     });
 }
 
@@ -502,7 +526,6 @@ if (syncButton) {
     renderPhotoGrid();
     attachMenuListeners(); 
     
-    // Se o app já estiver instalado, esconde o botão (lógica de PWA)
     if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
         const installBtn = document.getElementById('installBtn');
         if (installBtn) {
